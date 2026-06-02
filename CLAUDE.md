@@ -3,9 +3,28 @@
 A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/).
 
 ## Project Overview
-- Simple CLI tool to look up Pokemon info (name, type, stats) via GET requests to PokéAPI
-- REPL-style interface
-- Includes caching for performance
+- Simple CLI tool to look up Pokemon info via GET requests to PokéAPI
+- REPL-style interface with a command registry pattern
+- Caching layer via `internal/pokecache` to avoid repeat API calls
+
+## Project Structure
+- `main.go` — REPL loop, scanner, command dispatch
+- `repl.go` — `config` struct, `cliCommand` struct, `getCommands()`, command functions, `cleanInput()`
+- `location_area.go` — API structs and fetch functions
+- `internal/pokecache/pokecache.go` — thread-safe cache with TTL reaping
+- `repl_test.go` — unit tests for `cleanInput`
+
+## Commands
+- `help` — displays all commands and descriptions
+- `exit` — exits the program
+- `map` — displays next 20 location areas (paginates forward)
+- `mapb` — displays previous 20 location areas (paginates back)
+- `explore <location>` — lists all Pokemon in a given location area
+
+## Key Patterns
+- All commands have signature `func(cfg *config, args []string) error`
+- `config` holds `Next`, `Previous` pagination URLs and the `Cache`
+- Cache key is the full URL; stores raw response bytes
 
 ## Development Environment
 - Go project, run via WSL 2 on Windows

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"pokedex/internal/pokecache"
 	"strings"
 )
 
@@ -14,12 +15,13 @@ func cleanInput(text string) []string {
 type config struct {
 	Next     *string
 	Previous *string
+	Cache    pokecache.Cache
 }
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(cfg *config) error
+	callback    func(cfg *config, args []string) error
 }
 
 func getCommands() map[string]cliCommand {
@@ -44,14 +46,19 @@ func getCommands() map[string]cliCommand {
 			description: "Displays the previous 20 location areas",
 			callback:    commandMapb,
 		},
+		"explore": {
+			name:        "explore",
+			description: "Lists all pokemon in location",
+			callback:    commandExplore,
+		},
 	}
 }
-func commandExit(cfg *config) error {
+func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
-func commandHelp(cfg *config) error {
+func commandHelp(cfg *config, args []string) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage: pokedexcli help <command>")
 	fmt.Println("")
@@ -61,12 +68,12 @@ func commandHelp(cfg *config) error {
 	return nil
 
 }
-func commandMap(cfg *config) error {
+func commandMap(cfg *config, args []string) error {
 	url := "https://pokeapi.co/api/v2/location-area/"
 	if cfg.Next != nil {
 		url = *cfg.Next
 	}
-	data, err := fetchLocationAreas(url)
+	data, err := fetchLocationAreas(url, &cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -75,16 +82,32 @@ func commandMap(cfg *config) error {
 	return nil
 }
 
-func commandMapb(cfg *config) error {
+func commandMapb(cfg *config, args []string) error {
 	if cfg.Previous == nil {
 		fmt.Println("you're on the first page")
 		return nil
 	}
-	data, err := fetchLocationAreas(*cfg.Previous)
+	data, err := fetchLocationAreas(*cfg.Previous, &cfg.Cache)
 	if err != nil {
 		return err
 	}
 	cfg.Next = data.Next
 	cfg.Previous = data.Previous
+	return nil
+}
+func commandExplore(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("please provide a location name")
+		return nil
+	}
+	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
+	data, err := fetchExplore(url, &cfg.Cache)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Found Pokemon:")
+	for _, e := range data.PokemonEncounters {
+		fmt.Println(" -", e.Pokemon.Name)
+	}
 	return nil
 }

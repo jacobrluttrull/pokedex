@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"pokedex/internal/pokecache"
+	"time"
 )
 
 //TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
@@ -14,8 +16,7 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	commands := getCommands()
 	cfg := &config{
-		Next:     nil,
-		Previous: nil,
+		Cache: pokecache.NewCache(5 * time.Minute),
 	}
 	for {
 		fmt.Print("Pokedex > ")
@@ -29,7 +30,7 @@ func main() {
 			fmt.Println("Command not found")
 			continue
 		}
-		err := cmd.callback(cfg)
+		err := cmd.callback(cfg, text[1:])
 		if err != nil {
 			return
 		}
