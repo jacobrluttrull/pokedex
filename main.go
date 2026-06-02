@@ -13,6 +13,10 @@ func main() {
 	// make a simple repl system for the pokedex
 	scanner := bufio.NewScanner(os.Stdin)
 	commands := getCommands()
+	cfg := &config{
+		Next:     nil,
+		Previous: nil,
+	}
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()
@@ -25,7 +29,7 @@ func main() {
 			fmt.Println("Command not found")
 			continue
 		}
-		err := cmd.callback()
+		err := cmd.callback(cfg)
 		if err != nil {
 			return
 		}
