@@ -51,11 +51,27 @@ func getCommands() map[string]cliCommand {
 			description: "Lists all pokemon in location",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Attempt to catch a pokemon by name",
+			callback:    commandCatch,
+		},
 	}
 }
+
 func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
+	return nil
+}
+
+func commandCatch(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("please provide a pokemon name")
+		return nil
+	}
+	name := args[0]
+	fmt.Printf("Throwing a Pokeball at %s...\n", name)
 	return nil
 }
 func commandHelp(cfg *config, args []string) error {
