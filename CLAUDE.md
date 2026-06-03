@@ -11,6 +11,7 @@ A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/
 - `main.go` — REPL loop, scanner, command dispatch
 - `repl.go` — `config` struct, `cliCommand` struct, `getCommands()`, command functions, `cleanInput()`
 - `location_area.go` — API structs and fetch functions
+- `pokemon.go` — `Pokemon` struct and `fetchPokemon` function
 - `internal/pokecache/pokecache.go` — thread-safe cache with TTL reaping
 - `repl_test.go` — unit tests for `cleanInput`
 
@@ -20,6 +21,9 @@ A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/
 - `map` — displays next 20 location areas (paginates forward)
 - `mapb` — displays previous 20 location areas (paginates back)
 - `explore <location>` — lists all Pokemon in a given location area
+- `catch <pokemon>` — attempts to catch a Pokemon; uses base experience to determine catch chance
+- `inspect <pokemon>` — displays info (name, height, weight, stats, types) for a caught Pokemon
+- `pokedex` — lists all caught Pokemon
 
 ## Key Patterns
 - All commands have signature `func(cfg *config, args []string) error`
