@@ -126,7 +126,7 @@ func TestCommandCatch(t *testing.T) {
 			t.Errorf("unexpected error: %v", err)
 		}
 	})
-	t.Run("guaranteed catch (base_experience=1)", func(t *testing.T) {
+	t.Run("guaranteed catch default ball", func(t *testing.T) {
 		cfg := newTestCfg()
 		seedCache(cfg, "magikarp")
 		if err := commandCatch(cfg, []string{"magikarp"}); err != nil {
@@ -144,6 +144,40 @@ func TestCommandCatch(t *testing.T) {
 		err := commandCatch(cfg, []string{"notarealpokemon12345"})
 		if err == nil {
 			t.Error("expected error for unknown pokemon, got nil")
+		}
+	})
+}
+
+func TestCommandCatchBallTypes(t *testing.T) {
+	balls := []struct {
+		name string
+		flag string
+	}{
+		{"pokeball", "--ball=pokeball"},
+		{"greatball", "--ball=greatball"},
+		{"ultraball", "--ball=ultraball"},
+	}
+	for _, tt := range balls {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := newTestCfg()
+			seedCache(cfg, "magikarp")
+			if err := commandCatch(cfg, []string{"magikarp", tt.flag}); err != nil {
+				t.Errorf("unexpected error with %s: %v", tt.name, err)
+			}
+			// BaseExperience=1 guarantees catch for all ball types
+			if _, ok := cfg.Pokedex["magikarp"]; !ok {
+				t.Errorf("expected magikarp caught with %s", tt.name)
+			}
+		})
+	}
+	t.Run("unknown ball type", func(t *testing.T) {
+		cfg := newTestCfg()
+		seedCache(cfg, "magikarp")
+		if err := commandCatch(cfg, []string{"magikarp", "--ball=masterball"}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if _, ok := cfg.Pokedex["magikarp"]; ok {
+			t.Error("expected no catch with unknown ball type")
 		}
 	})
 }

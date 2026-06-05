@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math/rand"
 	"os"
@@ -78,6 +79,16 @@ func getCommands() map[string]cliCommand {
 			description: "Renames a pokemon",
 			callback:    commandRename,
 		},
+		"release": {
+			name:        "release",
+			description: "Releases a pokemon",
+			callback:    commandRelease,
+		},
+		"wander": {
+			name:        "wander",
+			description: "Wanders are a pokemon",
+			callback:    commandWander,
+		},
 	}
 }
 
@@ -150,12 +161,22 @@ func commandCatch(cfg *config, args []string) error {
 		return nil
 	}
 	name := args[0]
-	fmt.Printf("Throwing a Pokeball at %s...\n", name)
+	fs := flag.NewFlagSet("catch", flag.ContinueOnError)
+	ball := fs.String("ball", "pokeball", "type of ball to use")
+	fs.Parse(args[1:])
+
+	threshold, ok := ballThresholds[*ball]
+	if !ok {
+		fmt.Printf("unknown ball type: %s\n", *ball)
+		return nil
+	}
+
+	fmt.Printf("Throwing a %s at %s...\n", *ball, name)
 	pokemon, err := fetchPokemon(name, &cfg.Cache)
 	if err != nil {
 		return err
 	}
-	if rand.Intn(pokemon.BaseExperience) < 50 {
+	if rand.Intn(pokemon.BaseExperience) < threshold {
 		fmt.Printf("%s was caught!\n", name)
 		cfg.Pokedex[name] = pokemon
 	} else {
@@ -219,4 +240,47 @@ func commandRename(cfg *config, args []string) error {
 	cfg.Pokedex[name] = pokemon
 	fmt.Printf("%s has been renamed to %s\n", name, pokemon.Nickname)
 	return nil
+}
+
+func commandRelease(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("please provide a pokemon name or nickname")
+		return nil
+	}
+	query := args[0]
+	keyToDelete := ""
+
+	for key, p := range cfg.Pokedex {
+		if key == query || p.Nickname == query {
+			keyToDelete = key
+			break
+		}
+	}
+	if keyToDelete != "" {
+		fmt.Printf("you have not caught this pokemon")
+		return nil
+	}
+	delete(cfg.Pokedex, keyToDelete)
+	fmt.Printf("%s has been released!\n", query)
+	return nil
+}
+func commandWander(cfg *config, args []string) error {
+	if len(args) == 0 {
+		fmt.Println("please provide a location name")
+		return nil
+	}
+	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
+	data, err := fetchExplore(url, &cfg.Cache)
+	if err != nil {
+		return err
+	}
+	encounters := data.PokemonEncounters
+	if len(encounters) == 0 {
+		fmt.Println("no pokemon found in this area")
+		return nil
+	}
+	random := encounters[rand.Intn(len(encounters))]
+	name := random.Pokemon.Name
+	fmt.Printf("A wild %s appeared!\n", name)
+	return commandCatch(cfg, []string{name})
 }
