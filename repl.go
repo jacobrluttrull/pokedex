@@ -282,5 +282,47 @@ func commandWander(cfg *config, args []string) error {
 	random := encounters[rand.Intn(len(encounters))]
 	name := random.Pokemon.Name
 	fmt.Printf("A wild %s appeared!\n", name)
-	return commandCatch(cfg, []string{name})
+	wild, err := fetchPokemon(name, &cfg.Cache)
+	if err != nil {
+		return err
+	}
+
+	var input string
+	fmt.Print("Battle? (y/n): ")
+	fmt.Scan(&input)
+
+	wonBattle := false
+	if input == "y" {
+		if len(cfg.Pokedex) == 0 {
+			fmt.Println("you have no pokemon to battle with!")
+		} else {
+			fmt.Println("Your pokemon:")
+			for k := range cfg.Pokedex {
+				fmt.Println(" -", k)
+			}
+			fmt.Print("Which pokemon?: ")
+			fmt.Scan(&input)
+			yours, ok := cfg.Pokedex[input]
+			if !ok {
+				fmt.Println("you don't have that pokemon")
+				return nil
+			}
+			wonBattle = runBattle(yours, wild)
+		}
+	}
+
+	if wonBattle {
+		fmt.Print("Catch it? (y/n): ")
+		fmt.Scan(&input)
+		if input == "y" {
+			return commandCatch(cfg, []string{name})
+		}
+	} else {
+		fmt.Print("Catch it anyway? (y/n): ")
+		fmt.Scan(&input)
+		if input == "y" {
+			return commandCatch(cfg, []string{name})
+		}
+	}
+	return nil
 }
