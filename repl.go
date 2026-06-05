@@ -9,6 +9,12 @@ import (
 	"strings"
 )
 
+var ballThresholds = map[string]int{
+	"pokeball":  50,
+	"greatball": 75,
+	"ultraball": 90,
+}
+
 func cleanInput(text string) []string {
 	lowered := strings.ToLower(text)
 	return strings.Fields(lowered)
