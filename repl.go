@@ -68,11 +68,25 @@ func getCommands() map[string]cliCommand {
 			description: "Displays pokemon by name",
 			callback:    commandPokedex,
 		},
+		"clear": {
+			name:        "clear",
+			description: "Clears all pokemon",
+			callback:    commandClear,
+		},
+		"rename": {
+			name:        "rename",
+			description: "Renames a pokemon",
+			callback:    commandRename,
+		},
 	}
 }
 
 func commandExit(cfg *config, args []string) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
+	err := savePokedex(cfg)
+	if err != nil {
+		return err
+	}
 	os.Exit(0)
 	return nil
 }
@@ -159,7 +173,11 @@ func commandInspect(cfg *config, args []string) error {
 		fmt.Println("you have not caught that pokemon")
 		return nil
 	}
-	fmt.Printf("Name: %s\nHeight: %d\nWeight: %d\nStats:\n", pokemon.Name, pokemon.Height, pokemon.Weight)
+	displayName := pokemon.Name
+	if pokemon.Nickname != "" {
+		displayName = fmt.Sprintf("%s (%s)", pokemon.Nickname, pokemon.Name)
+	}
+	fmt.Printf("Name: %s\nHeight: %d\nWeight: %d\nStats:\n", displayName, pokemon.Height, pokemon.Weight)
 	for _, s := range pokemon.Stats {
 		fmt.Printf("  -%s: %d\n", s.Stat.Name, s.BaseStat)
 	}
@@ -174,5 +192,31 @@ func commandPokedex(cfg *config, args []string) error {
 	for name := range cfg.Pokedex {
 		fmt.Println(" -", name)
 	}
+	return nil
+}
+func commandClear(cfg *config, args []string) error {
+	err := clearPokedex(cfg)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Pokedex cleared!")
+	return nil
+
+}
+
+func commandRename(cfg *config, args []string) error {
+	if len(args) < 2 {
+		fmt.Println("usage: rename <pokemon> <nickname>")
+		return nil
+	}
+	name := args[0]
+	pokemon, ok := cfg.Pokedex[name]
+	if !ok {
+		fmt.Println("you have not caught that pokemon")
+		return nil
+	}
+	pokemon.Nickname = args[1]
+	cfg.Pokedex[name] = pokemon
+	fmt.Printf("%s has been renamed to %s\n", name, pokemon.Nickname)
 	return nil
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -14,154 +16,258 @@ func newTestCfg() *config {
 	}
 }
 
+// helpers
+
+func seedPokemon(cfg *config, name string) {
+	cfg.Pokedex[name] = Pokemon{Name: name, BaseExperience: 50, Height: 3, Weight: 18}
+}
+
+func seedCache(cfg *config, name string) {
+	body, _ := json.Marshal(Pokemon{Name: name, BaseExperience: 1})
+	cfg.Cache.Add(name, body)
+}
+
 // commandHelp
 
 func TestCommandHelp(t *testing.T) {
 	cfg := newTestCfg()
 	if err := commandHelp(cfg, []string{}); err != nil {
-		t.Errorf("commandHelp returned unexpected error: %v", err)
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-// commandMapb
+// commandMap / commandMapb
 
-func TestCommandMapbNoPrevious(t *testing.T) {
-	cfg := newTestCfg()
-	if err := commandMapb(cfg, []string{}); err != nil {
-		t.Errorf("commandMapb with no previous returned error: %v", err)
-	}
-}
-
-func TestCommandMapbWithPrevious(t *testing.T) {
-	cfg := newTestCfg()
-	next := "https://pokeapi.co/api/v2/location-area/?offset=20"
-	prev := "https://pokeapi.co/api/v2/location-area/?offset=0"
-	cfg.Previous = &prev
-	body := []byte(`{"next":"` + next + `","previous":null,"results":[{"name":"test-area","url":"http://example.com"}]}`)
-	cfg.Cache.Add(prev, body)
-
-	if err := commandMapb(cfg, []string{}); err != nil {
-		t.Errorf("commandMapb with previous returned error: %v", err)
-	}
-	if cfg.Next == nil || *cfg.Next != next {
-		t.Errorf("expected cfg.Next=%q, got %v", next, cfg.Next)
-	}
-}
-
-// commandMap
-
-func TestCommandMapFirstPage(t *testing.T) {
-	cfg := newTestCfg()
+func TestCommandMap(t *testing.T) {
 	next := "https://pokeapi.co/api/v2/location-area/?offset=20"
 	base := "https://pokeapi.co/api/v2/location-area/"
 	body := []byte(`{"next":"` + next + `","previous":null,"results":[{"name":"test-area","url":"http://example.com"}]}`)
-	cfg.Cache.Add(base, body)
 
-	if err := commandMap(cfg, []string{}); err != nil {
-		t.Errorf("commandMap returned error: %v", err)
+	tests := []struct {
+		name    string
+		seedURL string
+		nextSet string
+	}{
+		{"first page", base, next},
 	}
-	if cfg.Next == nil || *cfg.Next != next {
-		t.Errorf("expected cfg.Next=%q, got %v", next, cfg.Next)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := newTestCfg()
+			cfg.Cache.Add(tt.seedURL, body)
+			if err := commandMap(cfg, []string{}); err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if cfg.Next == nil || *cfg.Next != tt.nextSet {
+				t.Errorf("expected Next=%q, got %v", tt.nextSet, cfg.Next)
+			}
+		})
 	}
+}
+
+func TestCommandMapb(t *testing.T) {
+	next := "https://pokeapi.co/api/v2/location-area/?offset=20"
+	prev := "https://pokeapi.co/api/v2/location-area/?offset=0"
+	body := []byte(`{"next":"` + next + `","previous":null,"results":[{"name":"test-area","url":"http://example.com"}]}`)
+
+	t.Run("no previous", func(t *testing.T) {
+		cfg := newTestCfg()
+		if err := commandMapb(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("with previous", func(t *testing.T) {
+		cfg := newTestCfg()
+		cfg.Previous = &prev
+		cfg.Cache.Add(prev, body)
+		if err := commandMapb(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if cfg.Next == nil || *cfg.Next != next {
+			t.Errorf("expected Next=%q, got %v", next, cfg.Next)
+		}
+	})
 }
 
 // commandExplore
 
-func TestCommandExploreNoArgs(t *testing.T) {
-	cfg := newTestCfg()
-	if err := commandExplore(cfg, []string{}); err != nil {
-		t.Errorf("commandExplore with no args returned error: %v", err)
-	}
-}
-
-func TestCommandExploreWithCache(t *testing.T) {
-	cfg := newTestCfg()
-	location := "pallet-town-area"
-	url := "https://pokeapi.co/api/v2/location-area/" + location
-	body := []byte(`{"pokemon_encounters":[{"pokemon":{"name":"rattata"}},{"pokemon":{"name":"pidgey"}}]}`)
-	cfg.Cache.Add(url, body)
-
-	if err := commandExplore(cfg, []string{location}); err != nil {
-		t.Errorf("commandExplore returned error: %v", err)
-	}
+func TestCommandExplore(t *testing.T) {
+	t.Run("no args", func(t *testing.T) {
+		cfg := newTestCfg()
+		if err := commandExplore(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("cached location", func(t *testing.T) {
+		cfg := newTestCfg()
+		location := "pallet-town-area"
+		url := "https://pokeapi.co/api/v2/location-area/" + location
+		cfg.Cache.Add(url, []byte(`{"pokemon_encounters":[{"pokemon":{"name":"rattata"}},{"pokemon":{"name":"pidgey"}}]}`))
+		if err := commandExplore(cfg, []string{location}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("empty encounters", func(t *testing.T) {
+		cfg := newTestCfg()
+		location := "empty-area"
+		url := "https://pokeapi.co/api/v2/location-area/" + location
+		cfg.Cache.Add(url, []byte(`{"pokemon_encounters":[]}`))
+		if err := commandExplore(cfg, []string{location}); err != nil {
+			t.Errorf("unexpected error on empty encounters: %v", err)
+		}
+	})
 }
 
 // commandCatch
 
-func TestCommandCatchNoArgs(t *testing.T) {
-	cfg := newTestCfg()
-	if err := commandCatch(cfg, []string{}); err != nil {
-		t.Errorf("commandCatch with no args returned error: %v", err)
-	}
-}
-
-func TestCommandCatchGuaranteedCatch(t *testing.T) {
-	cfg := newTestCfg()
-	// BaseExperience=1 means rand.Intn(1)==0, always < 50 → always caught
-	body := []byte(`{"name":"magikarp","base_experience":1,"height":9,"weight":100,"stats":[],"types":[]}`)
-	cfg.Cache.Add("magikarp", body)
-
-	if err := commandCatch(cfg, []string{"magikarp"}); err != nil {
-		t.Errorf("commandCatch returned error: %v", err)
-	}
-	if _, ok := cfg.Pokedex["magikarp"]; !ok {
-		t.Errorf("expected magikarp to be in Pokedex after guaranteed catch")
-	}
+func TestCommandCatch(t *testing.T) {
+	t.Run("no args", func(t *testing.T) {
+		cfg := newTestCfg()
+		if err := commandCatch(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("guaranteed catch (base_experience=1)", func(t *testing.T) {
+		cfg := newTestCfg()
+		seedCache(cfg, "magikarp")
+		if err := commandCatch(cfg, []string{"magikarp"}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if _, ok := cfg.Pokedex["magikarp"]; !ok {
+			t.Error("expected magikarp in Pokedex after guaranteed catch")
+		}
+	})
+	t.Run("unknown pokemon returns error", func(t *testing.T) {
+		if testing.Short() {
+			t.Skip("skipping network call in short mode")
+		}
+		cfg := newTestCfg()
+		err := commandCatch(cfg, []string{"notarealpokemon12345"})
+		if err == nil {
+			t.Error("expected error for unknown pokemon, got nil")
+		}
+	})
 }
 
 // commandInspect
 
-func TestCommandInspectNoArgs(t *testing.T) {
-	cfg := newTestCfg()
-	if err := commandInspect(cfg, []string{}); err != nil {
-		t.Errorf("commandInspect with no args returned error: %v", err)
+func TestCommandInspect(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    []string
+		seed    bool
+		wantErr bool
+	}{
+		{"no args", []string{}, false, false},
+		{"not caught", []string{"mewtwo"}, false, false},
+		{"caught pokemon", []string{"pidgey"}, true, false},
 	}
-}
-
-func TestCommandInspectNotCaught(t *testing.T) {
-	cfg := newTestCfg()
-	if err := commandInspect(cfg, []string{"mewtwo"}); err != nil {
-		t.Errorf("commandInspect for uncaught pokemon returned error: %v", err)
-	}
-}
-
-func TestCommandInspectCaught(t *testing.T) {
-	cfg := newTestCfg()
-	cfg.Pokedex["pidgey"] = Pokemon{
-		Name:           "pidgey",
-		BaseExperience: 50,
-		Height:         3,
-		Weight:         18,
-	}
-	if err := commandInspect(cfg, []string{"pidgey"}); err != nil {
-		t.Errorf("commandInspect for caught pokemon returned error: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := newTestCfg()
+			if tt.seed {
+				seedPokemon(cfg, "pidgey")
+			}
+			err := commandInspect(cfg, tt.args)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("commandInspect() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
 	}
 }
 
 // commandPokedex
 
-func TestCommandPokedexEmpty(t *testing.T) {
+func TestCommandPokedex(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		cfg := newTestCfg()
+		if err := commandPokedex(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+	t.Run("with multiple pokemon", func(t *testing.T) {
+		cfg := newTestCfg()
+		seedPokemon(cfg, "pidgey")
+		seedPokemon(cfg, "caterpie")
+		if err := commandPokedex(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if len(cfg.Pokedex) != 2 {
+			t.Errorf("expected 2 pokemon, got %d", len(cfg.Pokedex))
+		}
+	})
+}
+
+// commandClear
+
+func TestCommandClear(t *testing.T) {
+	t.Run("clears in-memory pokedex", func(t *testing.T) {
+		cfg := newTestCfg()
+		seedPokemon(cfg, "bulbasaur")
+		t.Setenv("HOME", t.TempDir())
+		if err := commandClear(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+		if len(cfg.Pokedex) != 0 {
+			t.Errorf("expected empty Pokedex after clear, got %d entries", len(cfg.Pokedex))
+		}
+	})
+	t.Run("no-op when no save file", func(t *testing.T) {
+		cfg := newTestCfg()
+		t.Setenv("HOME", t.TempDir())
+		if err := commandClear(cfg, []string{}); err != nil {
+			t.Errorf("unexpected error when no file exists: %v", err)
+		}
+	})
+}
+
+// save / load roundtrip
+
+func TestSaveLoadRoundtrip(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	cfg := newTestCfg()
-	if err := commandPokedex(cfg, []string{}); err != nil {
-		t.Errorf("commandPokedex with empty pokedex returned error: %v", err)
+	seedPokemon(cfg, "charmander")
+
+	if err := savePokedex(cfg); err != nil {
+		t.Fatalf("savePokedex failed: %v", err)
+	}
+
+	cfg2 := newTestCfg()
+	if err := loadPokedex(cfg2); err != nil {
+		t.Fatalf("loadPokedex failed: %v", err)
+	}
+	if _, ok := cfg2.Pokedex["charmander"]; !ok {
+		t.Error("expected charmander to load from disk")
 	}
 }
 
-func TestCommandPokedexWithPokemon(t *testing.T) {
+func TestLoadNoFile(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	cfg := newTestCfg()
-	cfg.Pokedex["pidgey"] = Pokemon{
-		Name:           "pidgey",
-		BaseExperience: 50,
-		Height:         3,
-		Weight:         18,
+	if err := loadPokedex(cfg); err != nil {
+		t.Errorf("loadPokedex with no file should be a no-op, got: %v", err)
 	}
-	cfg.Pokedex["caterpie"] = Pokemon{
-		Name:           "caterpie",
-		BaseExperience: 39,
-		Height:         3,
-		Weight:         29,
+}
+
+func TestClearDeletesFile(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	cfg := newTestCfg()
+	seedPokemon(cfg, "squirtle")
+
+	if err := savePokedex(cfg); err != nil {
+		t.Fatalf("savePokedex failed: %v", err)
 	}
-	if err := commandPokedex(cfg, []string{}); err != nil {
-		t.Errorf("commandPokedex with pokemon returned error: %v", err)
+
+	if err := clearPokedex(cfg); err != nil {
+		t.Fatalf("clearPokedex failed: %v", err)
+	}
+
+	// file should be gone
+	path, err := pokedexPath()
+	if err != nil {
+		t.Fatalf("pokedexPath failed: %v", err)
+	}
+	if _, statErr := os.Stat(path); !os.IsNotExist(statErr) {
+		t.Error("expected save file to be deleted after clear")
 	}
 }

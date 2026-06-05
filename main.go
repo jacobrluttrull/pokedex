@@ -19,6 +19,11 @@ func main() {
 		Cache:   pokecache.NewCache(5 * time.Minute),
 		Pokedex: map[string]Pokemon{},
 	}
+	err := loadPokedex(cfg)
+	if err != nil {
+		fmt.Printf("error loading pokedex: %v\n", err)
+		return
+	}
 	for {
 		fmt.Print("Pokedex > ")
 		scanner.Scan()

@@ -39,6 +39,7 @@ A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/
 - **Max 25 lines per response** — the app is simple, keep suggestions small
 - Do not over-engineer or add abstractions beyond what's needed
 - Run and test via WSL bash, not Windows PowerShell directly
+- **Use Haiku for sub-agents** — when spinning up sub-agents for simple or data-heavy tasks, set the model to Haiku to keep costs down without sacrificing quality on the main agent
 
 ## Key Commands
 - `go run .` — run the app
