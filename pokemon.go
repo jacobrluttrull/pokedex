@@ -25,6 +25,43 @@ type Pokemon struct {
 			Name string `json:"name"`
 		} `json:"type"`
 	} `json:"types"`
+	Moves []struct {
+		Move struct {
+			Name string `json:"name"`
+			URL  string `json:"url"`
+		} `json:"move"`
+	} `json:"moves"`
+}
+
+type Move struct {
+	Name     string `json:"name"`
+	Power    int    `json:"power"`
+	Accuracy int    `json:"accuracy"`
+	Type     struct {
+		Name string `json:"name"`
+	} `json:"type"`
+}
+
+func fetchMove(url string, cache *pokecache.Cache) (Move, error) {
+	if body, ok := cache.Get(url); ok {
+		var m Move
+		return m, json.Unmarshal(body, &m)
+	}
+	resp, err := http.Get(url)
+	if err != nil {
+		return Move{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return Move{}, fmt.Errorf("could not fetch move: %s", url)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Move{}, err
+	}
+	cache.Add(url, body)
+	var m Move
+	return m, json.Unmarshal(body, &m)
 }
 
 func fetchPokemon(name string, cache *pokecache.Cache) (Pokemon, error) {

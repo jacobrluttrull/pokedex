@@ -313,7 +313,7 @@ func commandWander(cfg *config, args []string) error {
 				fmt.Println("you don't have that pokemon")
 				return nil
 			}
-			wonBattle = runBattle(yours, wild)
+			wonBattle = runBattle(yours, wild, cfg.Cache)
 		}
 	}
 
