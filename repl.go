@@ -23,7 +23,7 @@ func cleanInput(text string) []string {
 type config struct {
 	Next     *string
 	Previous *string
-	Cache    pokecache.Cache
+	Cache    *pokecache.Cache
 	Pokedex  map[string]Pokemon
 }
 
@@ -123,7 +123,7 @@ func commandMap(cfg *config, args []string) error {
 	if cfg.Next != nil {
 		url = *cfg.Next
 	}
-	data, err := fetchLocationAreas(url, &cfg.Cache)
+	data, err := fetchLocationAreas(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func commandMapb(cfg *config, args []string) error {
 		fmt.Println("you're on the first page")
 		return nil
 	}
-	data, err := fetchLocationAreas(*cfg.Previous, &cfg.Cache)
+	data, err := fetchLocationAreas(*cfg.Previous, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func commandExplore(cfg *config, args []string) error {
 		return nil
 	}
 	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
-	data, err := fetchExplore(url, &cfg.Cache)
+	data, err := fetchExplore(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func commandCatch(cfg *config, args []string) error {
 	}
 
 	fmt.Printf("Throwing a %s at %s...\n", *ball, name)
-	pokemon, err := fetchPokemon(name, &cfg.Cache)
+	pokemon, err := fetchPokemon(name, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func commandWander(cfg *config, args []string) error {
 		return nil
 	}
 	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
-	data, err := fetchExplore(url, &cfg.Cache)
+	data, err := fetchExplore(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func commandWander(cfg *config, args []string) error {
 	random := encounters[rand.Intn(len(encounters))]
 	name := random.Pokemon.Name
 	fmt.Printf("A wild %s appeared!\n", name)
-	wild, err := fetchPokemon(name, &cfg.Cache)
+	wild, err := fetchPokemon(name, cfg.Cache)
 	if err != nil {
 		return err
 	}

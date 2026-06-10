@@ -1,19 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"pokedex/internal/pokecache"
 	"time"
+
+	"github.com/chzyer/readline"
 )
 
-//TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
-
 func main() {
-	// make a simple repl system for the pokedex
-	scanner := bufio.NewScanner(os.Stdin)
 	commands := getCommands()
 	cfg := &config{
 		Cache:   pokecache.NewCache(5 * time.Minute),
@@ -24,10 +19,18 @@ func main() {
 		fmt.Printf("error loading pokedex: %v\n", err)
 		return
 	}
+	rl, err := readline.New("Pokedex > ")
+	if err != nil {
+		fmt.Printf("error starting repl: %v\n", err)
+		return
+	}
+	defer rl.Close()
 	for {
-		fmt.Print("Pokedex > ")
-		scanner.Scan()
-		text := cleanInput(scanner.Text())
+		line, err := rl.Readline()
+		if err != nil {
+			return
+		}
+		text := cleanInput(line)
 		if len(text) == 0 {
 			continue
 		}
@@ -36,9 +39,9 @@ func main() {
 			fmt.Println("Command not found")
 			continue
 		}
-		err := cmd.callback(cfg, text[1:])
+		err = cmd.callback(cfg, text[1:])
 		if err != nil {
-			return
+			fmt.Println(err)
 		}
 	}
 }
