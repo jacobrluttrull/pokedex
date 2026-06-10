@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"pokedex/internal/pokecache"
 	"strings"
+
+	"pokedex/internal/game"
+	"pokedex/internal/pokeapi"
+	"pokedex/internal/pokecache"
 )
 
 var ballThresholds = map[string]int{
@@ -24,7 +27,7 @@ type config struct {
 	Next     *string
 	Previous *string
 	Cache    *pokecache.Cache
-	Pokedex  map[string]Pokemon
+	Pokedex  map[string]pokeapi.Pokemon
 }
 
 type cliCommand struct {
@@ -92,7 +95,7 @@ func getCommands() map[string]cliCommand {
 		},
 		"wander": {
 			name:        "wander",
-			description: "Wanders are a pokemon",
+			description: "Encounter a random wild pokemon in a location",
 			callback:    commandWander,
 		},
 	}
@@ -123,7 +126,7 @@ func commandMap(cfg *config, args []string) error {
 	if cfg.Next != nil {
 		url = *cfg.Next
 	}
-	data, err := fetchLocationAreas(url, cfg.Cache)
+	data, err := pokeapi.FetchLocationAreas(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -137,7 +140,7 @@ func commandMapb(cfg *config, args []string) error {
 		fmt.Println("you're on the first page")
 		return nil
 	}
-	data, err := fetchLocationAreas(*cfg.Previous, cfg.Cache)
+	data, err := pokeapi.FetchLocationAreas(*cfg.Previous, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -151,7 +154,7 @@ func commandExplore(cfg *config, args []string) error {
 		return nil
 	}
 	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
-	data, err := fetchExplore(url, cfg.Cache)
+	data, err := pokeapi.FetchExplore(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -178,7 +181,7 @@ func commandCatch(cfg *config, args []string) error {
 	}
 
 	fmt.Printf("Throwing a %s at %s...\n", *ball, name)
-	pokemon, err := fetchPokemon(name, cfg.Cache)
+	pokemon, err := pokeapi.FetchPokemon(name, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -262,8 +265,8 @@ func commandRelease(cfg *config, args []string) error {
 			break
 		}
 	}
-	if keyToDelete != "" {
-		fmt.Printf("you have not caught this pokemon")
+	if keyToDelete == "" {
+		fmt.Println("you have not caught that pokemon")
 		return nil
 	}
 	delete(cfg.Pokedex, keyToDelete)
@@ -276,7 +279,7 @@ func commandWander(cfg *config, args []string) error {
 		return nil
 	}
 	url := "https://pokeapi.co/api/v2/location-area/" + args[0]
-	data, err := fetchExplore(url, cfg.Cache)
+	data, err := pokeapi.FetchExplore(url, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -288,7 +291,7 @@ func commandWander(cfg *config, args []string) error {
 	random := encounters[rand.Intn(len(encounters))]
 	name := random.Pokemon.Name
 	fmt.Printf("A wild %s appeared!\n", name)
-	wild, err := fetchPokemon(name, cfg.Cache)
+	wild, err := pokeapi.FetchPokemon(name, cfg.Cache)
 	if err != nil {
 		return err
 	}
@@ -313,7 +316,7 @@ func commandWander(cfg *config, args []string) error {
 				fmt.Println("you don't have that pokemon")
 				return nil
 			}
-			wonBattle = runBattle(yours, wild, cfg.Cache)
+			wonBattle = game.RunBattle(yours, wild, cfg.Cache)
 		}
 	}
 

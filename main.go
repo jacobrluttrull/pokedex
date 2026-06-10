@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	"pokedex/internal/pokecache"
 	"time"
+
+	"pokedex/internal/pokeapi"
+	"pokedex/internal/pokecache"
 
 	"github.com/chzyer/readline"
 )
@@ -12,7 +14,7 @@ func main() {
 	commands := getCommands()
 	cfg := &config{
 		Cache:   pokecache.NewCache(5 * time.Minute),
-		Pokedex: map[string]Pokemon{},
+		Pokedex: map[string]pokeapi.Pokemon{},
 	}
 	err := loadPokedex(cfg)
 	if err != nil {

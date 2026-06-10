@@ -1,10 +1,11 @@
-package main
+package pokeapi
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+
 	"pokedex/internal/pokecache"
 )
 
@@ -42,7 +43,39 @@ type Move struct {
 	} `json:"type"`
 }
 
-func fetchMove(url string, cache *pokecache.Cache) (Move, error) {
+func FetchPokemon(name string, cache *pokecache.Cache) (Pokemon, error) {
+	if body, ok := cache.Get(name); ok {
+		var data Pokemon
+		err := json.Unmarshal(body, &data)
+		if err != nil {
+			return Pokemon{}, err
+		}
+		return data, nil
+	}
+	url := "https://pokeapi.co/api/v2/pokemon/" + name
+	resp, err := http.Get(url)
+	if err != nil {
+		return Pokemon{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return Pokemon{}, fmt.Errorf("pokemon not found: %s", name)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Pokemon{}, err
+	}
+	cache.Add(name, body)
+	var data Pokemon
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return Pokemon{}, err
+	}
+	return data, nil
+}
+
+func FetchMove(url string, cache *pokecache.Cache) (Move, error) {
 	if body, ok := cache.Get(url); ok {
 		var m Move
 		return m, json.Unmarshal(body, &m)
@@ -62,38 +95,4 @@ func fetchMove(url string, cache *pokecache.Cache) (Move, error) {
 	cache.Add(url, body)
 	var m Move
 	return m, json.Unmarshal(body, &m)
-}
-
-func fetchPokemon(name string, cache *pokecache.Cache) (Pokemon, error) {
-	if body, ok := cache.Get(name); ok {
-		var data Pokemon
-		err := json.Unmarshal(body, &data)
-		if err != nil {
-			return Pokemon{}, err
-		}
-		return data, nil
-	}
-	url := "https://pokeapi.co/api/v2/pokemon/" + name
-	resp, err := http.Get(url)
-
-	if err != nil {
-		return Pokemon{}, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return Pokemon{}, fmt.Errorf("pokemon not found: %s", name)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return Pokemon{}, err
-	}
-	cache.Add(name, body)
-	var data Pokemon
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		return Pokemon{}, err
-
-	}
-	return data, nil
 }

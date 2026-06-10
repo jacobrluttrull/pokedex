@@ -1,10 +1,11 @@
-package main
+package pokeapi
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+
 	"pokedex/internal/pokecache"
 )
 
@@ -18,7 +19,7 @@ type LocationAreaResp struct {
 	} `json:"results"`
 }
 
-func fetchLocationAreas(url string, cache *pokecache.Cache) (LocationAreaResp, error) {
+func FetchLocationAreas(url string, cache *pokecache.Cache) (LocationAreaResp, error) {
 	if body, ok := cache.Get(url); ok {
 		var data LocationAreaResp
 		err := json.Unmarshal(body, &data)
@@ -65,7 +66,7 @@ type ExploreResp struct {
 	} `json:"pokemon_encounters"`
 }
 
-func fetchExplore(url string, cache *pokecache.Cache) (ExploreResp, error) {
+func FetchExplore(url string, cache *pokecache.Cache) (ExploreResp, error) {
 	if body, ok := cache.Get(url); ok {
 		var data ExploreResp
 		return data, json.Unmarshal(body, &data)

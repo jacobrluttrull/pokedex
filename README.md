@@ -77,11 +77,9 @@ CI runs `go vet` and `go test -race -short` on every push and pull request.
 ```
 main.go           — readline REPL loop and entry point
 repl.go           — Commands, config, ball thresholds
-pokemon.go        — Pokemon/Move structs and API fetches
-location.go       — Location area API structs and fetch
-battle.go         — Battle loop, damage formula, move selection
-typechart.go      — Gen 4 type effectiveness chart
 persist.go        — Save, load, and clear Pokedex
 internal/
+  pokeapi/        — Pokemon/Move/location structs and API fetches
+  game/           — Battle loop, damage formula, type chart
   pokecache/      — Thread-safe cache with TTL
 ```

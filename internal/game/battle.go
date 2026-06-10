@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"fmt"
@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"pokedex/internal/pokeapi"
 	"pokedex/internal/pokecache"
 )
 
 const battleLevel = 50
 
-func getStat(p Pokemon, name string) int {
+func getStat(p pokeapi.Pokemon, name string) int {
 	for _, s := range p.Stats {
 		if s.Stat.Name == name {
 			return s.BaseStat
@@ -21,8 +22,8 @@ func getStat(p Pokemon, name string) int {
 	return 1
 }
 
-func struggleMove() Move {
-	m := Move{Name: "struggle", Power: 50, Accuracy: 100}
+func struggleMove() pokeapi.Move {
+	m := pokeapi.Move{Name: "struggle", Power: 50, Accuracy: 100}
 	m.Type.Name = "normal"
 	return m
 }
@@ -30,15 +31,15 @@ func struggleMove() Move {
 // pickMoves fetches up to 4 damaging moves for a pokemon. Status moves
 // (power 0) are skipped; fetches are capped so a long move list can't
 // hammer the API. Falls back to struggle if nothing usable is found.
-func pickMoves(p Pokemon, cache *pokecache.Cache) []Move {
-	moves := []Move{}
+func pickMoves(p pokeapi.Pokemon, cache *pokecache.Cache) []pokeapi.Move {
+	moves := []pokeapi.Move{}
 	attempts := 0
 	for _, m := range p.Moves {
 		if len(moves) == 4 || attempts == 8 {
 			break
 		}
 		attempts++
-		mv, err := fetchMove(m.Move.URL, cache)
+		mv, err := pokeapi.FetchMove(m.Move.URL, cache)
 		if err != nil || mv.Power == 0 {
 			continue
 		}
@@ -53,7 +54,7 @@ func pickMoves(p Pokemon, cache *pokecache.Cache) []Move {
 // damageRoll resolves one attack: accuracy check, Gen 4 damage formula
 // at a flat level, STAB, type effectiveness, crit chance, and variance.
 // Returns the damage dealt and the battle text to print.
-func damageRoll(attacker, defender Pokemon, mv Move, rng *rand.Rand) (int, []string) {
+func damageRoll(attacker, defender pokeapi.Pokemon, mv pokeapi.Move, rng *rand.Rand) (int, []string) {
 	msgs := []string{fmt.Sprintf("%s used %s!", attacker.Name, mv.Name)}
 
 	accuracy := mv.Accuracy
@@ -108,7 +109,7 @@ func hpBar(name string, cur, max int) string {
 	return fmt.Sprintf("%-12s [%s%s] %d/%d", name, strings.Repeat("=", filled), strings.Repeat("-", 10-filled), cur, max)
 }
 
-func runBattle(yours, wild Pokemon, cache *pokecache.Cache) bool {
+func RunBattle(yours, wild pokeapi.Pokemon, cache *pokecache.Cache) bool {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	yourMoves := pickMoves(yours, cache)
 	wildMoves := pickMoves(wild, cache)
@@ -165,7 +166,7 @@ func runBattle(yours, wild Pokemon, cache *pokecache.Cache) bool {
 }
 
 // attack applies one move to the defender's hp and reports whether it fainted.
-func attack(attacker, defender Pokemon, mv Move, defenderHP *int, rng *rand.Rand) bool {
+func attack(attacker, defender pokeapi.Pokemon, mv pokeapi.Move, defenderHP *int, rng *rand.Rand) bool {
 	dmg, msgs := damageRoll(attacker, defender, mv, rng)
 	for _, m := range msgs {
 		fmt.Println(m)

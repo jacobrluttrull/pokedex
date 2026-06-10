@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"pokedex/internal/pokeapi"
 )
 
 func pokedexPath() (string, error) {
@@ -42,7 +44,7 @@ func loadPokedex(cfg *config) error {
 }
 
 func clearPokedex(cfg *config) error {
-	cfg.Pokedex = map[string]Pokemon{}
+	cfg.Pokedex = map[string]pokeapi.Pokemon{}
 	path, err := pokedexPath()
 	if err != nil {
 		return err

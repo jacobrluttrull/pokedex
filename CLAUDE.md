@@ -11,13 +11,11 @@ A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/
 ## Project Structure
 - `main.go` — readline REPL loop, command dispatch
 - `repl.go` — `config`, `cliCommand`, `getCommands()`, all command functions, `ballThresholds`
-- `pokemon.go` — `Pokemon`/`Move` structs, `fetchPokemon`, `fetchMove`
-- `location.go` — location-area API structs and fetch functions
-- `battle.go` — `runBattle`, `damageRoll`, `pickMoves`, `getStat`
-- `typechart.go` — Gen 4 type chart, `typeEffect`
 - `persist.go` — `savePokedex`, `loadPokedex`, `clearPokedex`, `pokedexPath`
-- `internal/pokecache/pokecache.go` — thread-safe TTL cache (`NewCache` returns `*Cache`)
-- `commands_test.go`, `repl_test.go` — tests (cache-seeded, no network in `-short`)
+- `internal/pokeapi/` — `Pokemon`/`Move`/location structs, `FetchPokemon`, `FetchMove`, `FetchLocationAreas`, `FetchExplore`
+- `internal/game/` — `RunBattle` (exported), damage formula, move selection, Gen 4 type chart
+- `internal/pokecache/` — thread-safe TTL cache (`NewCache` returns `*Cache`)
+- Tests live next to their package: `commands_test.go`/`repl_test.go` at root, `battle_test.go` in `internal/game` (cache-seeded, no network in `-short`)
 
 ## Commands
 - `help`, `exit` — basics; exit saves the Pokedex

@@ -1,4 +1,6 @@
-package main
+package game
+
+import "pokedex/internal/pokeapi"
 
 // Gen 4 type chart. Only non-neutral matchups are listed;
 // anything missing is a plain 1.0.
@@ -32,7 +34,7 @@ func typeEffect(moveType string, defenderTypes []string) float64 {
 	return mult
 }
 
-func typeNames(p Pokemon) []string {
+func typeNames(p pokeapi.Pokemon) []string {
 	names := make([]string, 0, len(p.Types))
 	for _, t := range p.Types {
 		names = append(names, t.Type.Name)
