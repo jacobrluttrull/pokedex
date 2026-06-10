@@ -3,36 +3,42 @@
 A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/).
 
 ## Project Overview
-- Simple CLI tool to look up Pokemon info via GET requests to PokéAPI
-- REPL-style interface with a command registry pattern
+- REPL CLI with a command registry pattern; line editing and history via `chzyer/readline`
 - Caching layer via `internal/pokecache` to avoid repeat API calls
+- Pokedex persists to `~/.pokedex` (JSON) between sessions
+- Gen 4-style battle system: real moves, type chart, crits, speed order
 
 ## Project Structure
-- `main.go` — REPL loop, scanner, command dispatch
-- `repl.go` — `config` struct, `cliCommand` struct, `getCommands()`, command functions, `cleanInput()`
-- `location_area.go` — API structs and fetch functions
-- `pokemon.go` — `Pokemon` struct and `fetchPokemon` function
-- `internal/pokecache/pokecache.go` — thread-safe cache with TTL reaping
-- `repl_test.go` — unit tests for `cleanInput`
+- `main.go` — readline REPL loop, command dispatch
+- `repl.go` — `config`, `cliCommand`, `getCommands()`, all command functions, `ballThresholds`
+- `pokemon.go` — `Pokemon`/`Move` structs, `fetchPokemon`, `fetchMove`
+- `location.go` — location-area API structs and fetch functions
+- `battle.go` — `runBattle`, `damageRoll`, `pickMoves`, `getStat`
+- `typechart.go` — Gen 4 type chart, `typeEffect`
+- `persist.go` — `savePokedex`, `loadPokedex`, `clearPokedex`, `pokedexPath`
+- `internal/pokecache/pokecache.go` — thread-safe TTL cache (`NewCache` returns `*Cache`)
+- `commands_test.go`, `repl_test.go` — tests (cache-seeded, no network in `-short`)
 
 ## Commands
-- `help` — displays all commands and descriptions
-- `exit` — exits the program
-- `map` — displays next 20 location areas (paginates forward)
-- `mapb` — displays previous 20 location areas (paginates back)
-- `explore <location>` — lists all Pokemon in a given location area
-- `catch <pokemon>` — attempts to catch a Pokemon; uses base experience to determine catch chance
-- `inspect <pokemon>` — displays info (name, height, weight, stats, types) for a caught Pokemon
-- `pokedex` — lists all caught Pokemon
+- `help`, `exit` — basics; exit saves the Pokedex
+- `map` / `mapb` — paginate location areas
+- `explore <location>` — list Pokemon in a location area
+- `wander <location>` — random encounter: optional battle, then optional catch
+- `catch <pokemon> [--ball pokeball|greatball|ultraball]` — catch chance vs base experience
+- `inspect <pokemon>` — stats, types, nickname for a caught Pokemon
+- `rename <pokemon> <nickname>` / `release <pokemon>` — manage caught Pokemon (release works by nickname too)
+- `pokedex` — list all caught Pokemon
+- `clear` — wipe the Pokedex and delete the save file
 
 ## Key Patterns
-- All commands have signature `func(cfg *config, args []string) error`
-- `config` holds `Next`, `Previous` pagination URLs and the `Cache`
-- Cache key is the full URL; stores raw response bytes
+- All commands: `func(cfg *config, args []string) error`
+- `config` holds pagination URLs, `*pokecache.Cache`, and the `Pokedex` map
+- Cache key is the full URL (pokemon fetches use the bare name); stores raw response bytes
+- Tests seed the cache with JSON bytes instead of hitting the network
 
 ## Development Environment
-- Go project, run via WSL 2 on Windows
-- Module name: `pokedex`
+- Go project, run via WSL 2 on Windows; module name `pokedex`
+- CI: GitHub Actions runs `go vet` + `go test -race -short` on push/PR
 
 ## Claude Code Guidelines
 - **Syntax and general help only** — do not build features autonomously
@@ -43,4 +49,4 @@ A command-line REPL Pokedex built in Go, using the PokéAPI (https://pokeapi.co/
 
 ## Key Commands
 - `go run .` — run the app
-- `go test ./...` — run tests
+- `go test -short ./...` — run tests (skip network-dependent tests)
